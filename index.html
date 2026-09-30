@@ -1,0 +1,342 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>On-device Web Speech test page</title>
+<style>
+  body { font: 13px/1.45 system-ui, sans-serif; max-width: 960px;
+         margin: 16px auto; padding: 0 16px; }
+  h1 { font-size: 18px; }
+  h2 { font-size: 15px; margin-top: 22px; border-bottom: 1px solid #ddd; }
+  label { margin-right: 14px; white-space: nowrap; }
+  p { margin: 6px 0; }
+  pre { background: #f0f4ff; border: 1px solid #d0d8ee; padding: 6px 8px;
+        margin: 6px 0; }
+  #log { font: 12px monospace; white-space: pre-wrap; background: #f5f5f5;
+         border: 1px solid #ddd; padding: 8px; min-height: 120px; }
+</style>
+
+<h1>On-device Web Speech test page</h1>
+
+<p><b>Status:</b> <span id="device-status">checking</span></p>
+
+<h2>1. available() and install()</h2>
+<p>
+  <label>langs <input id="opt-langs" type="text" size="12" value="en-US">
+  </label>
+  <label><input id="opt-local" type="checkbox" checked> processLocally</label>
+  <label>quality
+    <select id="opt-quality">
+      <option value="">(omit)</option>
+      <option>command</option>
+      <option>dictation</option>
+      <option>conversation</option>
+    </select>
+  </label>
+</p>
+<pre id="api-call"></pre>
+<button id="avail-btn">available()</button>
+<button id="install-btn">install()</button>
+
+<h2>2. start()</h2>
+<p>
+  <label><input type="radio" name="source" value="sample" checked> Sample
+    clip</label>
+  <label><input type="radio" name="source" value="file"> WAV file
+    <input id="wav-file" type="file" accept="audio/*,.wav"></label>
+  <label><input type="radio" name="source" value="mic"> Microphone</label>
+</p>
+<p>
+  <label>lang <input id="lang" type="text" size="8" value="en-US"></label>
+  <label><input id="continuous" type="checkbox" checked> continuous</label>
+  <label><input id="interim" type="checkbox" checked> interimResults</label>
+  <label><input id="rec-local" type="checkbox"> processLocally</label>
+  <label>quality
+    <select id="rec-quality">
+      <option value="">(unset)</option>
+      <option>command</option>
+      <option>dictation</option>
+      <option>conversation</option>
+    </select>
+  </label>
+</p>
+<pre id="start-call"></pre>
+<button id="go">Start</button>
+<button id="stop-btn">Stop</button>
+<span id="run-state"></span>
+
+<h2>Log <button id="clear-btn">Clear</button></h2>
+<div id="log"></div>
+
+<script>
+const $ = (id) => document.getElementById(id)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+const EN_US = { langs: ['en-US'], processLocally: true, quality: 'command' }
+// A clip keeps a continuous session open, so stop it this long after the
+// clip ends to get the final result.
+const STOP_AFTER_CLIP_MS = 2000
+// From the web-platform-tests speech-api suite (media/speech.wav). It says
+// "this is a sentence in a single segment".
+const SAMPLE_CLIP = 'wpt_speech.wav'
+
+function log(text) {
+  $('log').textContent += text + '\n'
+}
+
+// Starts a log entry with the code the button runs.
+function logCall(code) {
+  if ($('log').textContent) {
+    log('')
+  }
+  log(code)
+}
+
+// Formats a value as JavaScript source, for the call previews and the log.
+function toJs(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(toJs).join(', ')}]`
+  }
+  if (typeof value === 'string') {
+    return `'${value}'`
+  }
+  if (value && typeof value === 'object') {
+    const fields = Object.entries(value).map(([k, v]) => `${k}: ${toJs(v)}`)
+    return `{ ${fields.join(', ')} }`
+  }
+  return String(value)
+}
+
+// Status --------------------------------------------------------------------
+
+// What available() for en-US means here, and what to do next.
+const DEVICE_STATES = {
+  unavailable: 'on-device speech is off. Launch Brave with'
+    + ' --enable-features=BraveOnDeviceSpeechRecognition, and on Brave Origin'
+    + ' builds turn on On-Device AI.',
+  downloadable: 'press install(). Either the model is not downloaded yet, or'
+    + ' this origin has never called install(). A new port is a new origin.',
+  downloading: 'the model is downloading.',
+  available: 'ready.',
+}
+
+async function showDeviceStatus() {
+  const status = await SR.available(EN_US)
+  $('device-status').textContent =
+    `${status}, ${DEVICE_STATES[status] ?? ''}`
+}
+
+// available() and install() -------------------------------------------------
+
+function readApiOptions() {
+  const opts = {
+    langs: $('opt-langs').value.split(',').map((s) => s.trim())
+      .filter(Boolean),
+    processLocally: $('opt-local').checked,
+  }
+  if ($('opt-quality').value) {
+    opts.quality = $('opt-quality').value
+  }
+  return opts
+}
+
+const apiCall = (method, opts) =>
+  `await SpeechRecognition.${method}(${toJs(opts)})`
+
+async function runApi(method) {
+  const opts = readApiOptions()
+  logCall(apiCall(method, opts))
+  try {
+    log(`→ ${toJs(await SR[method](opts))}`)
+  } catch (e) {
+    log(`→ threw ${e.name}: ${e.message}`)
+  }
+  showDeviceStatus()
+}
+
+// start() -------------------------------------------------------------------
+
+function readRecognizerConfig() {
+  return {
+    source: document.querySelector('input[name=source]:checked').value,
+    lang: $('lang').value.trim(),
+    continuous: $('continuous').checked,
+    interimResults: $('interim').checked,
+    processLocally: $('rec-local').checked,
+    quality: $('rec-quality').value,
+  }
+}
+
+// The attributes Start sets, in order. The preview prints the same list.
+function recognizerAttributes(cfg) {
+  const attributes = [
+    ['lang', cfg.lang],
+    ['continuous', cfg.continuous],
+    ['interimResults', cfg.interimResults],
+    ['processLocally', cfg.processLocally],
+  ]
+  if (cfg.quality) {
+    attributes.push(['quality', cfg.quality])
+  }
+  return attributes
+}
+
+const START_CALLS = {
+  sample: `recognition.start(track)  // track plays ${SAMPLE_CLIP}`
+    + ' through an AudioContext',
+  file: 'recognition.start(track)  // track plays the picked file'
+    + ' through an AudioContext',
+  mic: 'recognition.start()  // the browser opens the microphone',
+}
+
+function startCallText(cfg) {
+  return [
+    'const recognition = new SpeechRecognition()',
+    ...recognizerAttributes(cfg).map(([name, value]) =>
+      `recognition.${name} = ${toJs(value)}`),
+    START_CALLS[cfg.source],
+  ].join('\n')
+}
+
+// Returns { track, begin(onClipEnd), cleanup() }. No track means start()
+// captures the microphone itself.
+async function prepareAudio(cfg) {
+  if (cfg.source === 'mic') {
+    return { track: null, begin() {}, cleanup() {} }
+  }
+  let bytes
+  if (cfg.source === 'file') {
+    const file = $('wav-file').files[0]
+    if (!file) {
+      throw new Error('pick a WAV file first')
+    }
+    bytes = await file.arrayBuffer()
+  } else {
+    const response = await fetch(SAMPLE_CLIP)
+    if (!response.ok) {
+      throw new Error(`fetch ${SAMPLE_CLIP} failed: ${response.status}`)
+    }
+    bytes = await response.arrayBuffer()
+  }
+  const ctx = new AudioContext()
+  const buffer = await ctx.decodeAudioData(bytes)
+  const src = ctx.createBufferSource()
+  src.buffer = buffer
+  const dest = ctx.createMediaStreamDestination()
+  src.connect(dest)
+  return {
+    track: dest.stream.getAudioTracks()[0],
+    begin(onClipEnd) {
+      src.onended = onClipEnd
+      src.start()
+    },
+    cleanup() { ctx.close() },
+  }
+}
+
+let current = null
+
+async function runStart() {
+  if (current) {
+    log('Still running, press Stop first.')
+    return
+  }
+  const cfg = readRecognizerConfig()
+  logCall(startCallText(cfg))
+
+  let audio
+  try {
+    audio = await prepareAudio(cfg)
+  } catch (e) {
+    log(`→ ${e.message}`)
+    return
+  }
+
+  const rec = new SR()
+  for (const [name, value] of recognizerAttributes(cfg)) {
+    rec[name] = value
+  }
+
+  const timers = []
+  let finished = false
+  const t0 = performance.now()
+  const at = () => `(+${(performance.now() - t0).toFixed(0)} ms)`
+
+  const finish = () => {
+    if (finished) {
+      return
+    }
+    finished = true
+    timers.forEach(clearTimeout)
+    audio.cleanup()
+    current = null
+    $('run-state').textContent = ''
+  }
+
+  for (const name of ['start', 'audiostart', 'speechstart', 'speechend',
+                      'audioend']) {
+    rec.addEventListener(name, () => log(`→ ${name} ${at()}`))
+  }
+  rec.onresult = (e) => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i]
+      log(`→ ${r.isFinal ? 'final' : 'interim'} "${r[0].transcript}" ${at()}`)
+    }
+  }
+  // When blink rejects start() up front it fires error without end.
+  rec.onerror = (e) => {
+    log(`→ error ${e.error} ${at()}`)
+    timers.push(setTimeout(() => {
+      if (!finished) {
+        log('→ no end event after the error')
+        finish()
+        rec.onerror = null
+        rec.onend = null
+        rec.abort()
+      }
+    }, 1500))
+  }
+  rec.onend = () => {
+    log(`→ end ${at()}`)
+    finish()
+  }
+
+  try {
+    if (audio.track) {
+      rec.start(audio.track)
+    } else {
+      rec.start()
+    }
+  } catch (e) {
+    log(`→ threw ${e.name}: ${e.message}`)
+    audio.cleanup()
+    return
+  }
+  current = rec
+  $('run-state').textContent = cfg.source === 'mic'
+    ? 'listening, press Stop when done' : 'playing the clip'
+  audio.begin(() => {
+    if (finished) {
+      return
+    }
+    log(`→ clip ended, stop() in ${STOP_AFTER_CLIP_MS} ms ${at()}`)
+    timers.push(setTimeout(() => rec.stop(), STOP_AFTER_CLIP_MS))
+  })
+}
+
+function showCalls() {
+  const opts = readApiOptions()
+  $('api-call').textContent =
+    `${apiCall('available', opts)}\n${apiCall('install', opts)}`
+  $('start-call').textContent = startCallText(readRecognizerConfig())
+}
+
+$('avail-btn').onclick = () => runApi('available')
+$('install-btn').onclick = () => runApi('install')
+$('go').onclick = runStart
+$('stop-btn').onclick = () => current && current.stop()
+$('clear-btn').onclick = () => {
+  $('log').textContent = ''
+}
+document.addEventListener('input', showCalls)
+document.addEventListener('change', showCalls)
+showCalls()
+showDeviceStatus()
+</script>
