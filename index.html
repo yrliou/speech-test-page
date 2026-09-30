@@ -7,6 +7,7 @@
   h1 { font-size: 18px; }
   h2 { font-size: 15px; margin-top: 22px; border-bottom: 1px solid #ddd; }
   label { margin-right: 14px; white-space: nowrap; }
+  label:has(input:disabled), .note { color: #999; }
   p { margin: 6px 0; }
   pre { background: #f0f4ff; border: 1px solid #d0d8ee; padding: 6px 8px;
         margin: 6px 0; }
@@ -38,12 +39,18 @@
 
 <h2>2. start()</h2>
 <p>
-  <label><input type="radio" name="source" value="sample" checked> Sample
+  <label><input type="radio" name="source" value="mic" checked> Microphone
+  </label>
+  <!-- Clips play at 44.1 or 48 kHz and Brave's model takes 16 kHz, so these
+       stay off until Brave resamples track audio. Remove the disabled
+       attributes and the note below then. -->
+  <label><input type="radio" name="source" value="sample" disabled> Sample
     clip</label>
-  <label><input type="radio" name="source" value="file"> WAV file
-    <input id="wav-file" type="file" accept="audio/*,.wav"></label>
-  <label><input type="radio" name="source" value="mic"> Microphone</label>
+  <label><input type="radio" name="source" value="file" disabled> WAV file
+    <input id="wav-file" type="file" accept="audio/*,.wav" disabled></label>
 </p>
+<p class="note">Sample clip and WAV file need Brave to resample track audio,
+  coming soon.</p>
 <p>
   <label>lang <input id="lang" type="text" size="8" value="en-US"></label>
   <label><input id="continuous" type="checkbox" checked> continuous</label>
