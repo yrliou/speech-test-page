@@ -8,7 +8,7 @@ calls a website makes:
 - `install()` lets a website use the speech model, downloading it first if
   needed.
 - `start()` listens and returns text. It can listen to the microphone, or to
-  an audio track the page plays.
+  an audio track the page plays. The test page covers both.
 
 Only English is supported for now.
 
@@ -30,10 +30,6 @@ Only English is supported for now.
   downloads the speech model (about 600 MB) by itself at launch. Opening the
   profile without the flag deletes it, and it downloads again at the next
   launch with the flag.
-- **Microphone only for now.** The page's **Sample clip** and **WAV file**
-  sources are greyed out until Brave resamples audio tracks to the rate the
-  model needs. Every **Start** below uses the microphone: press **Start**,
-  allow the microphone the first time, say a sentence, then press **Stop**.
 
 ## 1. First install, on a brand-new profile
 
@@ -49,15 +45,15 @@ the command above.
 3. In **2. start()**, tick **processLocally** and press **Start**. The log
    shows `error language-not-supported`, because this website has not called
    `install()` yet.
-4. Untick **processLocally**, press **Start**, say a sentence and press
-   **Stop**. The log shows your words appearing in `interim` lines, then a
-   `final` with your words. Without processLocally, `install()` is not
-   needed.
+4. Untick **processLocally** and press **Start**. The log shows the words
+   appearing in `interim` lines, then
+   `final "This is a sentence in a single segment"`. Without processLocally,
+   `install()` is not needed.
 5. In **1. available() and install()**, press **install()**. The log shows
    `true` right away, since the model is already downloaded, and **Status**
    changes to `available`.
-6. Tick **processLocally** in **2. start()**, press **Start**, say a sentence
-   and press **Stop**. The log shows a `final` with your words.
+6. Tick **processLocally** in **2. start()** and press **Start**. The log shows
+   `final "This is a sentence in a single segment"`.
 7. Quit Brave and launch it again with the same command. Reload the page.
    **Status** still says `available`.
 8. Run `python3 -m http.server 8766` in the same folder and open
@@ -88,32 +84,54 @@ Without processLocally the browser always answers `available`, because it
 assumes a server could do the work. Brave has no speech server, and the
 **start()** tests below show what happens then.
 
-### start()
+### Audio tracks are converted for the model
 
-Change the options in **2. start()**, press **Start**, say a sentence and
-press **Stop**. Put the options back to the defaults after each row.
+The speech model only takes audio at 16000 Hz, meaning 16000 numbers per
+second. The microphone gives it that. The sample clip and the WAV file play
+through an audio track at the computer's own audio rate, usually 44100 or 48000
+Hz, so Brave has to convert that audio before the model can use it. To check
+the conversion works:
+
+1. Pick **Sample clip** and press **Start**. The first line after the code is
+   `→ track rate 48000 Hz, the model takes 16000 Hz`, or 44100 Hz on some
+   computers. Any rate other than 16000 means the conversion is in use.
+2. The log ends with `final "This is a sentence in a single segment"` and
+   `end`, with no `error`. Without the conversion the model refuses the audio,
+   and the log shows `error service-not-allowed` instead.
+
+### start() with the sample clip
+
+The sample clip says "This is a sentence in a single segment". Change the
+options in **2. start()** and press **Start**. Put the options back to the
+defaults after each row.
 
 | Options | Expected in the log |
 | --- | --- |
-| The defaults | `interim` lines while you speak, then a `final` with your words after you press **Stop** |
-| continuous unticked | Ends by itself about a second after you stop talking, with a `final` |
+| The defaults | `interim` lines while the clip plays, then a `final` with the sentence about a second after the page stops listening, which it does 2 seconds after the clip ends |
+| continuous unticked | Ends by itself about a second after the speech ends, before the page stops listening |
 | interimResults unticked | Only the `final` line, no `interim` lines |
-| processLocally ticked | `final` with your words |
-| processLocally ticked, quality `dictation` | `final` with your words |
-| lang `en-GB` | `final` with your words |
-| processLocally ticked, quality `conversation` | `error language-not-supported` right away |
+| processLocally ticked | `final` with the sentence |
+| processLocally ticked, quality `dictation` | `final` with the sentence |
+| lang `en-GB` | `final` with the sentence |
+| processLocally ticked, quality `conversation` | `error language-not-supported` |
 | quality `conversation` | `error network`, no text |
-| processLocally ticked, lang `fr-FR` | `error language-not-supported` right away |
+| processLocally ticked, lang `fr-FR` | `error language-not-supported` |
 | lang `fr-FR` | `error network`, no text |
 
-### Real websites
+Also pick **WAV file**, choose a recording of your own English speech and press
+**Start**. The `final` text matches what is said.
 
-These call `start()` on the microphone too. They should show your words:
+### start() with the microphone
 
-- `https://www.google.com/intl/en/chrome/demos/speech.html`: choose English,
-  United States, click the microphone, speak, click it again.
-- `https://speechnotes.co/dictate/`: click the microphone, speak, click it
-  again.
+1. Pick **Microphone**, press **Start** and allow the microphone. Say a
+   sentence, then press **Stop**. The `final` line shows your words.
+2. Untick **continuous** and repeat. Stop talking, and it ends by itself about
+   a second later with your words.
+3. Try two real websites. They should show your words:
+   - `https://www.google.com/intl/en/chrome/demos/speech.html`: choose English,
+     United States, click the microphone, speak, click it again.
+   - `https://speechnotes.co/dictate/`: click the microphone, speak, click it
+     again.
 
 ### install() needs a click
 
@@ -147,19 +165,19 @@ profile. The switch takes effect right away, with no restart.
    `brave://components` lists it with a version number, usually within a
    minute. Reload the test page. **Status** says `downloadable`. Press
    **install()**: `true`, and **Status** changes to `available`. **Start**
-   with processLocally ticked shows your words.
+   with processLocally ticked shows the sentence.
 3. Turn **On-Device AI** off. Brave deletes the model right away, and the
    entry disappears from `brave://components`. Reload the test page.
    **Status** says `unavailable`.
 4. Turn **On-Device AI** back on. The model downloads again. Once
    `brave://components` lists it, reload the test page. **Status** says
    `available` without pressing **install()** again, and **Start** with
-   processLocally ticked shows your words.
+   processLocally ticked shows the sentence.
 
 ## Expected behavior
 
-- With continuous ticked, the words stay `interim` until you press **Stop**,
-  and then one `final` arrives. Chrome does the same.
+- With continuous ticked, the words stay `interim` until the page stops
+  listening, and then one `final` arrives. Chrome does the same.
 - Anything Brave does not support ends with `error network` unless
   processLocally is ticked, because Brave has no speech server.
 
