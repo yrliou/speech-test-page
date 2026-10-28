@@ -62,10 +62,18 @@ prompt and the settings switch.
    take a few minutes.
 2. When the download is done, the log shows `true`. **Status** says
    `available`.
-3. Set langs to `en-GB` and press **available()**. The log shows
-   `"available"`.
-4. Set langs to `fr-FR`. **available()** gives `"unavailable"`, and
-   **install()** gives `false`.
+3. Change one option at a time in **1. available() and install()**. Reset it
+   after each row.
+
+   | Option | available() | install() |
+   | --- | --- | --- |
+   | quality `dictation` | `"available"` | `true` |
+   | quality `conversation` | `"unavailable"` | `false` |
+   | langs `en-GB` | `"available"` | `true` |
+   | langs `fr-FR` | `"unavailable"` | `false` |
+
+   Brave's model serves the `command` and `dictation` qualities, and English
+   only.
 
 ## 4. start()
 
@@ -94,6 +102,8 @@ Tick **processLocally** for each row.
 | --- | --- |
 | continuous unticked | Ends by itself about 1 second after the speech ends |
 | interimResults unticked | Only the `final` line |
+| quality `dictation` | `final` with the sentence |
+| quality `conversation` | `error language-not-supported` |
 | lang `fr-FR` | `error language-not-supported` |
 
 ### Microphone
@@ -170,18 +180,6 @@ section 2. Reload the test page after each change.
   listening. Then one `final` arrives. Chrome does the same.
 - Without processLocally, anything Brave does not support ends with an error.
   Brave has no speech server.
-
-## Not in this plan
-
-The plan does not test these items. Browser tests and unit tests in
-brave-core cover most of them.
-
-- The `quality` options.
-- **Block**, Esc and **Don't ask again** on the prompt, and the settings
-  switch in `brave://settings/privacy`. See the test plan in
-  [brave-core#40814](https://github.com/brave/brave-core/pull/40814).
-- `install()` 6 seconds after the click.
-- The **WAV file** source.
 
 ## Credits
 
