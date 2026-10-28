@@ -13,7 +13,7 @@ real model download, the real model, a real microphone and real websites.
 
 ## Before you start
 
-- Use Brave Nightly 1.100.11 or later.
+- Use Brave Nightly 1.100.44 or later.
 - **Test page**: open `https://yrliou.github.io/speech-test-page/`. Each
   button shows the code it runs. The log shows the result.
 - **Profile**: use a brand-new profile. On macOS:
@@ -138,9 +138,6 @@ These websites do not set processLocally. They show your words:
 ## 6. Other windows and builds
 
 ### 6.1 Private, Guest and Tor windows
-
-This section needs the change that turns off on-device speech in these
-windows. That change has not landed yet.
 
 Use the same profile. The model is on disk, but these windows must not use
 it. Open a **New Private Window**, a **Guest** window and a **New Private
