@@ -53,17 +53,18 @@ Delete `/tmp/brave-speech-qa`, then launch with the command above.
 
 ## 3. install()
 
-1. In **1. available() and install()**, press **install()**. A prompt opens:
-   "yrliou.github.io wants to Download a speech recognition model (636 MB) to
-   process speech on this device".
-2. Press **Block**. The log shows `false`. `brave://components` has no model.
-3. Press **install()** again, then press **Allow**. `brave://components`
-   lists the model. The download can take a few minutes.
-4. When the download is done, the log shows `true`. **Status** says
+This section uses only **Allow**. The test plan in
+[brave-core#40814](https://github.com/brave/brave-core/pull/40814) covers the
+prompt and the settings switch.
+
+1. In **1. available() and install()**, press **install()**. A prompt opens.
+   Press **Allow**. `brave://components` lists the model. The download can
+   take a few minutes.
+2. When the download is done, the log shows `true`. **Status** says
    `available`.
-5. Set langs to `en-GB` and press **available()**. The log shows
+3. Set langs to `en-GB` and press **available()**. The log shows
    `"available"`.
-6. Set langs to `fr-FR`. **available()** gives `"unavailable"`, and
+4. Set langs to `fr-FR`. **available()** gives `"unavailable"`, and
    **install()** gives `false`.
 
 ## 4. start()
@@ -176,8 +177,9 @@ The plan does not test these items. Browser tests and unit tests in
 brave-core cover most of them.
 
 - The `quality` options.
-- Esc on the prompt, and **Don't ask again**.
-- The settings switch in `brave://settings/privacy`.
+- **Block**, Esc and **Don't ask again** on the prompt, and the settings
+  switch in `brave://settings/privacy`. See the test plan in
+  [brave-core#40814](https://github.com/brave/brave-core/pull/40814).
 - `install()` 6 seconds after the click.
 - The **WAV file** source.
 
