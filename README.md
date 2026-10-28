@@ -174,13 +174,6 @@ section 2. Reload the test page after each change.
    **Status** says `unavailable`. **Start** with processLocally unticked gives
    an error, and no text.
 
-## Expected behavior
-
-- With continuous ticked, the words stay `interim` until the page stops
-  listening. Then one `final` arrives. Chrome does the same.
-- Without processLocally, anything Brave does not support ends with an error.
-  Brave has no speech server.
-
 ## Credits
 
 `wpt_speech.wav` is from web-platform-tests. See `wpt_speech.wav.LICENSE.md`.
