@@ -1,185 +1,185 @@
 # Brave on-device speech recognition test page
 
-Brave can now turn speech into text on the device, without sending audio to a
-server. Websites use it through the Web Speech API. This plan checks the three
-calls a website makes:
+This plan tests the three Web Speech API calls for on-device speech
+recognition:
 
-- `available()` asks whether on-device speech works for a language.
-- `install()` lets a website use the speech model, downloading it first if
-  needed.
-- `start()` listens and returns text. It can listen to the microphone, or to
-  an audio track the page plays. The test page covers both.
+- `available()` asks if on-device speech works for a language.
+- `install()` lets a website use the speech model. Brave asks the user before
+  the first download.
+- `start()` listens and returns text, from an audio track or the microphone.
 
-Only English is supported for now.
+Only English is supported. The plan does not test every option. It tests the
+real model download, the real model, a real microphone and real websites.
 
 ## Before you start
 
-- **Test page**: clone this repo, then in it run
-  `python3 -m http.server 8765` and open `http://127.0.0.1:8765/`. Each button
-  shows the code it runs, and the log at the bottom shows what came back.
-- **Always launch with the feature flag.** There is no `brave://flags` entry,
-  so use the command line. On macOS:
+- Use Brave Nightly 1.100.11 or later.
+- **Test page**: open `https://yrliou.github.io/speech-test-page/`. Each
+  button shows the code it runs. The log shows the result.
+- **Profile**: use a brand-new profile. On macOS:
 
   ```
   "/Applications/Brave Browser Nightly.app/Contents/MacOS/Brave Browser Nightly" \
-    --user-data-dir=/tmp/brave-speech-qa \
-    --enable-features=BraveOnDeviceSpeechRecognition
+    --user-data-dir=/tmp/brave-speech-qa
   ```
 
-  Windows and Linux take the same two flags. With the flag on, Brave
-  downloads the speech model (about 600 MB) by itself at launch. Opening the
-  profile without the flag deletes it, and it downloads again at the next
-  launch with the flag.
+  Windows and Linux take the same `--user-data-dir` option.
+- **Feature flag**: `brave://flags/#brave-on-device-speech-recognition`. It is
+  off by default. Section 2 turns it on.
+- **Model**: 636 MB. Brave downloads it only after the user allows it.
 
-## 1. First install, on a brand-new profile
+Do the sections in order, on one profile. Section 6.2 needs a Brave Origin
+build and a second new profile, with a different `--user-data-dir`.
 
-Delete `/tmp/brave-speech-qa` first, so the profile is new. Then launch with
-the command above.
+## 1. Feature flag off
 
-1. Open `brave://components`. "Brave On-Device Speech Models" starts at
-   version 0.0.0.0 and shows a real version number once Brave has downloaded
-   it, usually within a minute. No website has asked for it.
-2. Open the test page. **Status** says `downloadable`, even though the model
-   is there. Each website has to call `install()` once before it is told the
-   model is available.
-3. In **2. start()**, tick **processLocally** and press **Start**. The log
-   shows `error language-not-supported`, because this website has not called
-   `install()` yet.
-4. Untick **processLocally** and press **Start**. The log shows the words
-   appearing in `interim` lines, then
-   `final "This is a sentence in a single segment"`. Without processLocally,
-   `install()` is not needed.
-5. In **1. available() and install()**, press **install()**. The log shows
-   `true` right away, since the model is already downloaded, and **Status**
-   changes to `available`.
-6. Tick **processLocally** in **2. start()** and press **Start**. The log shows
-   `final "This is a sentence in a single segment"`.
-7. Quit Brave and launch it again with the same command. Reload the page.
-   **Status** still says `available`.
-8. Run `python3 -m http.server 8766` in the same folder and open
-   `http://127.0.0.1:8766/`, which counts as a different website. **Status**
-   says `downloadable`. Press **install()**. It returns `true` right away and
-   **Status** changes to `available`.
+Delete `/tmp/brave-speech-qa`, then launch with the command above.
 
-## 2. Testing the calls with different options
+1. Open the test page. **Status** says `unavailable`.
+2. In **2. start()**, keep **Sample clip**, tick **processLocally** and press
+   **Start**. The log shows `error language-not-supported`.
+3. Untick **processLocally** and press **Start**. The log shows an error, and
+   no `interim` or `final` lines.
 
-Keep using the same profile and the page at `http://127.0.0.1:8765/`.
+## 2. Feature flag on
 
-### available() and install()
+1. Open `brave://flags/#brave-on-device-speech-recognition`. **Brave
+   On-Device Speech Recognition** shows **Default**. Set it to **Enabled** and
+   press **Relaunch**.
+2. `brave://components` has no "Brave On-Device Speech Models" entry.
+3. Reload the test page. **Status** says `downloadable`.
+4. Tick **processLocally** and press **Start**. The log shows
+   `error language-not-supported`.
 
-Change the options in **1. available() and install()**, then press the
-buttons. Put the options back to en-US, processLocally ticked and quality
-(omit) after each row.
+## 3. install()
 
-| Options | available() | install() |
-| --- | --- | --- |
-| en-US, processLocally (the defaults) | `available` | `true` |
-| quality `dictation` | `available` | |
-| langs `en-GB` | `available` | |
-| quality `conversation` | `unavailable` | `false` |
-| langs `fr-FR` | `unavailable` | `false` |
-| processLocally unticked | `available` | `false` |
+1. In **1. available() and install()**, press **install()**. A prompt opens:
+   "yrliou.github.io wants to Download a speech recognition model (636 MB) to
+   process speech on this device".
+2. Press **Block**. The log shows `false`. `brave://components` has no model.
+3. Press **install()** again, then press **Allow**. `brave://components`
+   lists the model. The download can take a few minutes.
+4. When the download is done, the log shows `true`. **Status** says
+   `available`.
+5. Set langs to `en-GB` and press **available()**. The log shows
+   `"available"`.
+6. Set langs to `fr-FR`. **available()** gives `"unavailable"`, and
+   **install()** gives `false`.
 
-Without processLocally the browser always answers `available`, because it
-assumes a server could do the work. Brave has no speech server, and the
-**start()** tests below show what happens then.
+## 4. start()
 
-### Audio tracks are converted for the model
+Use **Sample clip**, unless the step says **Microphone**. Reset the options to
+the defaults after each row.
 
-The speech model only takes audio at 16000 Hz, meaning 16000 numbers per
-second. The microphone gives it that. The sample clip and the WAV file play
-through an audio track at the computer's own audio rate, usually 44100 or 48000
-Hz, so Brave has to convert that audio before the model can use it. To check
-the conversion works:
+The sample clip plays through an audio track at the computer's audio rate.
+The first log line shows it, usually 44100 or 48000 Hz. The model takes
+16000 Hz, so this also tests the audio conversion.
 
-1. Pick **Sample clip** and press **Start**. The first line after the code is
-   `→ track rate 48000 Hz, the model takes 16000 Hz`, or 44100 Hz on some
-   computers. Any rate other than 16000 means the conversion is in use.
-2. The log ends with `final "This is a sentence in a single segment"` and
-   `end`, with no `error`. Without the conversion the model refuses the audio,
-   and the log shows `error service-not-allowed` instead.
+### processLocally
 
-### start() with the sample clip
-
-The sample clip says "This is a sentence in a single segment". Change the
-options in **2. start()** and press **Start**. Put the options back to the
-defaults after each row.
-
-| Options | Expected in the log |
+| processLocally | Expected in the log |
 | --- | --- |
-| The defaults | `interim` lines while the clip plays, then a `final` with the sentence about a second after the page stops listening, which it does 2 seconds after the clip ends |
-| continuous unticked | Ends by itself about a second after the speech ends, before the page stops listening |
-| interimResults unticked | Only the `final` line, no `interim` lines |
-| processLocally ticked | `final` with the sentence |
-| processLocally ticked, quality `dictation` | `final` with the sentence |
-| lang `en-GB` | `final` with the sentence |
-| processLocally ticked, quality `conversation` | `error language-not-supported` |
-| quality `conversation` | `error network`, no text |
-| processLocally ticked, lang `fr-FR` | `error language-not-supported` |
-| lang `fr-FR` | `error network`, no text |
+| ticked | `interim` lines, then `final "This is a sentence in a single segment"` |
+| unticked | The same |
 
-Also pick **WAV file**, choose a recording of your own English speech and press
-**Start**. The `final` text matches what is said.
+The page stops listening 2 seconds after the clip ends. The `final` line comes
+about 1 second after that.
 
-### start() with the microphone
+### Options
 
-1. Pick **Microphone**, press **Start** and allow the microphone. Say a
-   sentence, then press **Stop**. The `final` line shows your words.
-2. Untick **continuous** and repeat. Stop talking, and it ends by itself about
-   a second later with your words.
-3. Try two real websites. They should show your words:
-   - `https://www.google.com/intl/en/chrome/demos/speech.html`: choose English,
-     United States, click the microphone, speak, click it again.
-   - `https://speechnotes.co/dictate/`: click the microphone, speak, click it
-     again.
+Tick **processLocally** for each row.
 
-### install() needs a click
+| Option | Expected in the log |
+| --- | --- |
+| continuous unticked | Ends by itself about 1 second after the speech ends |
+| interimResults unticked | Only the `final` line |
+| lang `fr-FR` | `error language-not-supported` |
 
-Websites can only download the model in response to a click. Test this from
-the DevTools console on a website you have not used for this test, for
-example `https://example.com`. Typing in the console counts as a click.
+### Microphone
 
-1. `await SpeechRecognition.available({ langs: ['en-US'], processLocally: true })`
-   returns `"downloadable"`.
-2. `setTimeout(() => SpeechRecognition.install({ langs: ['en-US'], processLocally: true }).then(console.log, (e) => console.log(e.name)), 6000)`
-   prints `NotAllowedError` after 6 seconds. The click has expired by then.
-3. `await SpeechRecognition.install({ langs: ['en-US'], processLocally: true })`
-   returns `true`.
-4. `await SpeechRecognition.available({ langs: ['en-US'], processLocally: true })`
-   returns `"available"`.
+Pick **Microphone** and tick **processLocally**.
 
-### On-Device AI switch (Brave Origin builds)
+1. Press **Start** and allow the microphone. Say a sentence and press
+   **Stop**. The `final` line shows your words.
+2. Untick **continuous** and do it again. It stops by itself about 1 second
+   after you stop talking.
 
-Brave Origin builds have an "On-Device AI" switch at `brave://settings/origin`,
-and it starts off. Launch the Origin build with the same flag on a brand-new
-profile. The switch takes effect right away, with no restart.
+### Real websites
 
-1. With the switch off, open the test page. **Status** says `unavailable`.
-   **available()** gives `unavailable`, **install()** gives `false`, and
-   **Start** gives `error language-not-supported` with processLocally ticked
-   and `error network` without it. `brave://components` has no "Brave
-   On-Device Speech Models" entry. The DevTools console on any website gives
-   the same answers: `available()` returns `"unavailable"`, `install()`
-   returns `false`.
-2. Turn **On-Device AI** on. Brave downloads the model by itself, and
-   `brave://components` lists it with a version number, usually within a
-   minute. Reload the test page. **Status** says `downloadable`. Press
-   **install()**: `true`, and **Status** changes to `available`. **Start**
-   with processLocally ticked shows the sentence.
-3. Turn **On-Device AI** off. Brave deletes the model right away, and the
-   entry disappears from `brave://components`. Reload the test page.
-   **Status** says `unavailable`.
-4. Turn **On-Device AI** back on. The model downloads again. Once
-   `brave://components` lists it, reload the test page. **Status** says
-   `available` without pressing **install()** again, and **Start** with
-   processLocally ticked shows the sentence.
+These websites do not set processLocally. They show your words:
+
+- `https://www.google.com/intl/en/chrome/demos/speech.html`: choose English,
+  United States. Click the microphone, speak, click it again.
+- `https://speechnotes.co/dictate/`: click the microphone, speak, click it
+  again.
+
+## 5. After a relaunch and on a new origin
+
+1. Quit Brave and launch it again with the same command. Reload the test page.
+   **Status** says `available`. Tick **processLocally** and press **Start**.
+   The log shows the sentence.
+2. Open `https://example.com`, which is a different origin, and the DevTools
+   console. Typing in the console counts as a click. Run:
+   - `await SpeechRecognition.available({ langs: ['en-US'], processLocally: true })`
+     returns `"downloadable"`. Each origin must call `install()` once.
+   - `await SpeechRecognition.install({ langs: ['en-US'], processLocally: true })`
+     returns `true` right away, with no prompt.
+   - `await SpeechRecognition.available({ langs: ['en-US'], processLocally: true })`
+     returns `"available"`.
+
+## 6. Other windows and builds
+
+### 6.1 Private, Guest and Tor windows
+
+This section needs the change that turns off on-device speech in these
+windows. That change has not landed yet.
+
+Use the same profile. The model is on disk, but these windows must not use
+it. Open a **New Private Window**, a **Guest** window and a **New Private
+Window with Tor**. In each, open the test page and check:
+
+| Check | Expected |
+| --- | --- |
+| **Status** | `unavailable` |
+| **install()** | `false`, with no prompt |
+| **Start**, processLocally ticked | `error language-not-supported` |
+| **Start**, processLocally unticked | `error network`, and no text |
+
+### 6.2 Brave Origin builds
+
+Origin builds have an **On-Device AI** switch at `brave://settings/origin`. It
+starts off. Use a brand-new profile, and turn on the feature flag as in
+section 2. Reload the test page after each change.
+
+1. With the switch off:
+   - **Status** says `unavailable`.
+   - **Start** with processLocally ticked gives
+     `error language-not-supported`.
+   - **Start** with processLocally unticked gives an error, and no text.
+2. Turn **On-Device AI** on. **Status** says `downloadable`. Press
+   **install()**, then **Allow**. When the download is done, the log shows
+   `true`. **Start** with processLocally ticked shows the sentence.
+3. Turn **On-Device AI** off. The model disappears from `brave://components`.
+   **Status** says `unavailable`. **Start** with processLocally unticked gives
+   an error, and no text.
 
 ## Expected behavior
 
 - With continuous ticked, the words stay `interim` until the page stops
-  listening, and then one `final` arrives. Chrome does the same.
-- Anything Brave does not support ends with `error network` unless
-  processLocally is ticked, because Brave has no speech server.
+  listening. Then one `final` arrives. Chrome does the same.
+- Without processLocally, anything Brave does not support ends with an error.
+  Brave has no speech server.
+
+## Not in this plan
+
+The plan does not test these items. Browser tests and unit tests in
+brave-core cover most of them.
+
+- The `quality` options.
+- Esc on the prompt, and **Don't ask again**.
+- The settings switch in `brave://settings/privacy`.
+- `install()` 6 seconds after the click.
+- The **WAV file** source.
 
 ## Credits
 

@@ -35,6 +35,7 @@
 <pre id="api-call"></pre>
 <button id="avail-btn">available()</button>
 <button id="install-btn">install()</button>
+<span id="api-state"></span>
 
 <h2>2. start()</h2>
 <p>
@@ -110,11 +111,11 @@ function toJs(value) {
 
 // What available() for en-US means here, and what to do next.
 const DEVICE_STATES = {
-  unavailable: 'on-device speech is off. Launch Brave with'
-    + ' --enable-features=BraveOnDeviceSpeechRecognition, and on Brave Origin'
+  unavailable: 'on-device speech is off. Enable'
+    + ' brave://flags/#brave-on-device-speech-recognition, and on Brave Origin'
     + ' builds turn on On-Device AI.',
-  downloadable: 'press install(). Either the model is not downloaded yet, or'
-    + ' this origin has never called install(). A new port is a new origin.',
+  downloadable: 'press install(). Brave asks before it downloads the model.'
+    + ' Each origin must call install() once.',
   downloading: 'the model is downloading.',
   available: 'ready.',
 }
@@ -145,11 +146,14 @@ const apiCall = (method, opts) =>
 async function runApi(method) {
   const opts = readApiOptions()
   logCall(apiCall(method, opts))
+  // install() waits for the prompt and then for the whole download.
+  $('api-state').textContent = `waiting for ${method}()`
   try {
     log(`→ ${toJs(await SR[method](opts))}`)
   } catch (e) {
     log(`→ threw ${e.name}: ${e.message}`)
   }
+  $('api-state').textContent = ''
   showDeviceStatus()
 }
 
