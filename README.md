@@ -38,14 +38,14 @@ Delete `/tmp/brave-speech-qa`, then launch with the command above.
 1. Open the test page. **Status** says `unavailable`.
 2. In **2. start()**, keep **Sample clip**, tick **processLocally** and press
    **Start**. The log shows `error language-not-supported`.
-3. Untick **processLocally** and press **Start**. The log shows an error, and
-   no `interim` or `final` lines.
+3. Untick **processLocally** and press **Start**. The log shows
+   `error network`, and no `interim` or `final` lines.
 
 ## 2. Feature flag on
 
 1. Open `brave://flags/#brave-on-device-speech-recognition`. **Brave
-   On-Device Speech Recognition** shows **Default**. Set it to **Enabled** and
-   press **Relaunch**.
+   On-Device Speech Recognition** shows **Default (Disabled)**. Set it to
+   **Enabled** and press **Relaunch**.
 2. `brave://components` has no "Brave On-Device Speech Models" entry.
 3. Reload the test page. **Status** says `downloadable`.
 4. Tick **processLocally** and press **Start**. The log shows
@@ -67,10 +67,10 @@ prompt and the settings switch.
 
    | Option | available() | install() |
    | --- | --- | --- |
-   | quality `dictation` | `"available"` | `true` |
-   | quality `conversation` | `"unavailable"` | `false` |
-   | langs `en-GB` | `"available"` | `true` |
-   | langs `fr-FR` | `"unavailable"` | `false` |
+   | quality `dictation` | `'available'` | `true` |
+   | quality `conversation` | `'unavailable'` | `false` |
+   | langs `en-GB` | `'available'` | `true` |
+   | langs `fr-FR` | `'unavailable'` | `false` |
 
    Brave's model serves the `command` and `dictation` qualities, and English
    only.
@@ -91,16 +91,13 @@ The first log line shows it, usually 44100 or 48000 Hz. The model takes
 | ticked | `interim` lines, then `final "This is a sentence in a single segment"` |
 | unticked | The same |
 
-The page stops listening 2 seconds after the clip ends. The `final` line comes
-about 1 second after that.
-
 ### Options
 
 Tick **processLocally** for each row.
 
 | Option | Expected in the log |
 | --- | --- |
-| continuous unticked | Ends by itself about 1 second after the speech ends |
+| continuous unticked | Ends by itself a short time after the speech ends |
 | interimResults unticked | Only the `final` line |
 | quality `dictation` | `final` with the sentence |
 | quality `conversation` | `error language-not-supported` |
@@ -112,7 +109,7 @@ Pick **Microphone** and tick **processLocally**.
 
 1. Press **Start** and allow the microphone. Say a sentence and press
    **Stop**. The `final` line shows your words.
-2. Untick **continuous** and do it again. It stops by itself about 1 second
+2. Untick **continuous** and do it again. It stops by itself a short time
    after you stop talking.
 
 ### Real websites
