@@ -13,7 +13,7 @@ real model download, the real model, a real microphone and real websites.
 
 ## Before you start
 
-- Use Brave Nightly 1.100.44 or later.
+- Use Brave 1.100.44 or later.
 - **Test page**: open `https://yrliou.github.io/speech-test-page/`. Each
   button shows the code it runs. The log shows the result.
 - **Profile**: use a brand-new profile. On macOS:
